@@ -8,13 +8,15 @@ import { Loader2, SearchX } from "lucide-react";
 
 export function EventGrid() {
   const searchParams = useSearchParams();
-  const q = searchParams.get("q") ?? "";
-  const source = searchParams.get("source") ?? "";
-  const dateFrom = searchParams.get("dateFrom") ?? "";
-  const dateTo = searchParams.get("dateTo") ?? "";
+  const q          = searchParams.get("q")          ?? "";
+  const source     = searchParams.get("source")     ?? "";
+  const category   = searchParams.get("category")   ?? "";
+  const timeFilter = searchParams.get("timeFilter") ?? "";
+  const dateFrom   = searchParams.get("dateFrom")   ?? "";
+  const dateTo     = searchParams.get("dateTo")     ?? "";
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
-    useEvents({ q, source, dateFrom, dateTo });
+    useEvents({ q, source, category, timeFilter, dateFrom, dateTo });
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 

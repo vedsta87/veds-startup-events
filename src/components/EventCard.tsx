@@ -6,26 +6,29 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
-import { Calendar, MapPin, Users, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, Users, ExternalLink, Navigation } from "lucide-react";
 import Image from "next/image";
 
 interface EventCardProps {
   event: Event;
 }
 
-const sourceConfig = {
-  doorkeeper: {
-    label: "Doorkeeper",
-    className: "bg-orange-50 text-orange-600 border-orange-200",
-  },
-  luma: {
-    label: "Luma",
-    className: "bg-violet-50 text-violet-600 border-violet-200",
-  },
+const sourceConfig: Record<string, { label: string; className: string }> = {
+  doorkeeper:     { label: "Doorkeeper",       className: "bg-orange-50 text-orange-600 border-orange-200" },
+  luma:           { label: "Luma",             className: "bg-violet-50 text-violet-600 border-violet-200" },
+  eventbrite:     { label: "Eventbrite",       className: "bg-rose-50 text-rose-600 border-rose-200" },
+  meetup:         { label: "Meetup",           className: "bg-red-50 text-red-600 border-red-200" },
+  tokyoartbeat:   { label: "Tokyo Art Beat",   className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+  timeout:        { label: "TimeOut Tokyo",    className: "bg-yellow-50 text-yellow-600 border-yellow-200" },
+  residentadvisor:{ label: "RA",               className: "bg-zinc-800 text-zinc-100 border-zinc-700" },
+  venturecafe:    { label: "Venture Café",     className: "bg-blue-50 text-blue-600 border-blue-200" },
+  tokyodev:       { label: "TokyoDev",         className: "bg-teal-50 text-teal-600 border-teal-200" },
 };
 
+const fallbackSource = { label: "Event", className: "bg-gray-50 text-gray-600 border-gray-200" };
+
 export function EventCard({ event }: EventCardProps) {
-  const src = sourceConfig[event.source];
+  const src = sourceConfig[event.source] ?? fallbackSource;
   const eventDate = new Date(event.date);
   const relative = formatDistanceToNow(eventDate, { addSuffix: true });
   const formatted = format(eventDate, "EEE, MMM d · h:mm a");
@@ -92,21 +95,32 @@ export function EventCard({ event }: EventCardProps) {
           ))}
         </div>
 
-        <a
-          href={event.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            buttonVariants({ size: "sm" }),
-            "w-full mt-1 bg-gray-900 text-white hover:bg-gray-700 font-medium text-xs h-8 group/btn inline-flex items-center justify-center"
-          )}
-        >
-          View Event
-          <ExternalLink
-            size={11}
-            className="ml-1.5 transition-transform group-hover/btn:translate-x-0.5"
-          />
-        </a>
+        <div className="flex gap-2 mt-1">
+          <a
+            href={event.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ size: "sm" }),
+              "flex-1 bg-gray-900 text-white hover:bg-gray-700 font-medium text-xs h-8 group/btn inline-flex items-center justify-center"
+            )}
+          >
+            View Event
+            <ExternalLink size={11} className="ml-1.5 transition-transform group-hover/btn:translate-x-0.5" />
+          </a>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.venue)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ size: "sm", variant: "outline" }),
+              "h-8 px-2.5 text-xs border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 inline-flex items-center gap-1"
+            )}
+            title="Navigate to venue"
+          >
+            <Navigation size={12} />
+          </a>
+        </div>
       </CardContent>
     </Card>
   );

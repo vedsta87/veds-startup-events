@@ -1,18 +1,34 @@
-export type EventSource = "doorkeeper" | "luma";
+export type EventSource =
+  | "doorkeeper"
+  | "luma"
+  | "eventbrite"
+  | "meetup"
+  | "tokyoartbeat"
+  | "timeout"
+  | "residentadvisor"
+  | "venturecafe"
+  | "tokyodev";
+
+export type EventCategory = "Tech" | "Creative";
 
 export interface Event {
   id: string;
   title: string;
-  date: string; // ISO 8601
+  date: string; // ISO 8601 start
   endDate?: string;
   venue: string;
   address: string;
+  lat?: number;
+  lng?: number;
   source: EventSource;
+  category: EventCategory;
   tags: string[];
   image: string;
   url: string;
   description: string;
   attendees: number;
+  price?: string;       // "Free" | "¥1,000" | "From $10"
+  scrapedAt?: string;   // ISO timestamp — used for staleness UI
 }
 
 const tokyoImages = [
@@ -41,6 +57,7 @@ export const mockEvents: Event[] = [
     venue: "WeWork Roppongi Hills",
     address: "6-10-1 Roppongi, Minato-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["AI", "startup", "pitch"],
     image: img(0),
     url: "https://www.doorkeeper.jp/events/example-1",
@@ -55,6 +72,7 @@ export const mockEvents: Event[] = [
     venue: "SHIBUYA QWS",
     address: "2-24-12 Shibuya, Shibuya-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["networking", "founders", "tech"],
     image: img(1),
     url: "https://lu.ma/tokyo-founders-april",
@@ -69,6 +87,7 @@ export const mockEvents: Event[] = [
     venue: "Tokyo International Forum",
     address: "3-5-1 Marunouchi, Chiyoda-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["deep tech", "robotics", "biotech"],
     image: img(2),
     url: "https://www.doorkeeper.jp/events/example-3",
@@ -83,6 +102,7 @@ export const mockEvents: Event[] = [
     venue: "Spaces Shinjuku",
     address: "1-25-1 Nishi-Shinjuku, Shinjuku-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["SaaS", "growth", "marketing"],
     image: img(3),
     url: "https://lu.ma/saas-tokyo-april",
@@ -97,6 +117,7 @@ export const mockEvents: Event[] = [
     venue: "CryptoGarage Ginza",
     address: "5-3-1 Ginza, Chuo-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["web3", "crypto", "blockchain"],
     image: img(4),
     url: "https://www.doorkeeper.jp/events/example-5",
@@ -111,6 +132,7 @@ export const mockEvents: Event[] = [
     venue: "Andaz Tokyo Rooftop",
     address: "1-23-4 Toranomon, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["diversity", "founders", "networking"],
     image: img(5),
     url: "https://lu.ma/female-founders-tokyo",
@@ -125,6 +147,7 @@ export const mockEvents: Event[] = [
     venue: "Google Tokyo Office",
     address: "2-15-1 Konan, Minato-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["product", "launch", "startup"],
     image: img(6),
     url: "https://www.doorkeeper.jp/events/example-7",
@@ -139,6 +162,7 @@ export const mockEvents: Event[] = [
     venue: "DMM.com Akihabara Office",
     address: "1-1-1 Sotokanda, Chiyoda-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["AI", "workshop", "LLM"],
     image: img(7),
     url: "https://lu.ma/genai-workshop-tokyo",
@@ -153,6 +177,7 @@ export const mockEvents: Event[] = [
     venue: "Nihonbashi Takashimaya",
     address: "2-4-1 Nihonbashi, Chuo-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["fintech", "payments", "banking"],
     image: img(8),
     url: "https://www.doorkeeper.jp/events/example-9",
@@ -167,6 +192,7 @@ export const mockEvents: Event[] = [
     venue: "Mercari Office Roppongi",
     address: "6-10-1 Roppongi, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["rust", "dev", "systems"],
     image: img(9),
     url: "https://lu.ma/tokyo-dev-rust",
@@ -181,6 +207,7 @@ export const mockEvents: Event[] = [
     venue: "Impact Hub Tokyo",
     address: "2-11-3 Meguro, Meguro-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["startup", "edtech", "hackathon"],
     image: img(0),
     url: "https://www.doorkeeper.jp/events/example-11",
@@ -195,6 +222,7 @@ export const mockEvents: Event[] = [
     venue: "Trunk Hotel Rooftop",
     address: "5-31 Jingumae, Shibuya-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["climate", "cleantech", "startup"],
     image: img(1),
     url: "https://lu.ma/climate-tokyo-may",
@@ -209,6 +237,7 @@ export const mockEvents: Event[] = [
     venue: "Marunouchi Innovation Hub",
     address: "2-1-1 Marunouchi, Chiyoda-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["venture capital", "funding", "pitch"],
     image: img(2),
     url: "https://www.doorkeeper.jp/events/example-13",
@@ -223,6 +252,7 @@ export const mockEvents: Event[] = [
     venue: "Cybozu Office Aoyama",
     address: "1-8-6 Minami-Aoyama, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["react", "frontend", "javascript"],
     image: img(3),
     url: "https://lu.ma/react-tokyo-42",
@@ -237,6 +267,7 @@ export const mockEvents: Event[] = [
     venue: "Odaiba Big Sight East Hall",
     address: "3-11-1 Ariake, Koto-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["IoT", "smart city", "infrastructure"],
     image: img(4),
     url: "https://www.doorkeeper.jp/events/example-15",
@@ -251,6 +282,7 @@ export const mockEvents: Event[] = [
     venue: "DeNA HQ Shibuya",
     address: "2-21-1 Shibuya, Shibuya-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["mobile", "app", "consumer"],
     image: img(5),
     url: "https://lu.ma/mobile-founders-may",
@@ -265,6 +297,7 @@ export const mockEvents: Event[] = [
     venue: "bitFlyer Headquarters",
     address: "1-12-32 Akasaka, Minato-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["blockchain", "hackathon", "web3"],
     image: img(6),
     url: "https://www.doorkeeper.jp/events/example-17",
@@ -279,6 +312,7 @@ export const mockEvents: Event[] = [
     venue: "Keio University Hospital Innovation Center",
     address: "35 Shinanomachi, Shinjuku-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["healthtech", "medtech", "biotech"],
     image: img(7),
     url: "https://lu.ma/healthtech-tokyo-june",
@@ -293,6 +327,7 @@ export const mockEvents: Event[] = [
     venue: "LINE Corporation Shinjuku",
     address: "1-6-1 Nishi-Shinjuku, Shinjuku-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["golang", "backend", "cloud"],
     image: img(8),
     url: "https://www.doorkeeper.jp/events/example-19",
@@ -307,6 +342,7 @@ export const mockEvents: Event[] = [
     venue: "Mori Art Museum",
     address: "6-10-1 Roppongi, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["design", "UX", "product"],
     image: img(9),
     url: "https://lu.ma/design-tech-tokyo",
@@ -321,6 +357,7 @@ export const mockEvents: Event[] = [
     venue: "Pacifico Yokohama",
     address: "1-1-1 Minato Mirai, Nishi-ku, Yokohama",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["security", "infosec", "enterprise"],
     image: img(0),
     url: "https://www.doorkeeper.jp/events/example-21",
@@ -335,6 +372,7 @@ export const mockEvents: Event[] = [
     venue: "Google Campus Tokyo",
     address: "2-15-1 Konan, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["startup", "fireside", "inspiration"],
     image: img(1),
     url: "https://lu.ma/startup-grind-tokyo-june",
@@ -349,6 +387,7 @@ export const mockEvents: Event[] = [
     venue: "Rakuten Crimson House",
     address: "1-14-1 Tamagawa, Setagaya-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["ecommerce", "DTC", "retail"],
     image: img(2),
     url: "https://www.doorkeeper.jp/events/example-23",
@@ -363,6 +402,7 @@ export const mockEvents: Event[] = [
     venue: "METI Building Kasumigaseki",
     address: "1-3-1 Kasumigaseki, Chiyoda-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["AI", "policy", "ethics"],
     image: img(3),
     url: "https://lu.ma/ai-ethics-tokyo",
@@ -377,6 +417,7 @@ export const mockEvents: Event[] = [
     venue: "JAXA Innovation Hub",
     address: "2-1-1 Sengen, Tsukuba-shi, Ibaraki",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["space", "aerospace", "deep tech"],
     image: img(4),
     url: "https://www.doorkeeper.jp/events/example-25",
@@ -391,6 +432,7 @@ export const mockEvents: Event[] = [
     venue: "EY Japan Chiyoda",
     address: "1-2-1 Otemachi, Chiyoda-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["legal", "visa", "foreign founders"],
     image: img(5),
     url: "https://lu.ma/startup-visa-tokyo",
@@ -405,6 +447,7 @@ export const mockEvents: Event[] = [
     venue: "Hitotsubashi Hall",
     address: "2-1-2 Hitotsubashi, Chiyoda-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["data science", "ML", "analytics"],
     image: img(6),
     url: "https://www.doorkeeper.jp/events/example-27",
@@ -419,6 +462,7 @@ export const mockEvents: Event[] = [
     venue: "Abema Tower",
     address: "16-26 Nanpeidai-cho, Shibuya-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["creator economy", "social", "media"],
     image: img(7),
     url: "https://lu.ma/creator-economy-tokyo",
@@ -433,6 +477,7 @@ export const mockEvents: Event[] = [
     venue: "Sony Innovation Lounge",
     address: "1-7-1 Konan, Minato-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["hardware", "manufacturing", "IoT"],
     image: img(8),
     url: "https://www.doorkeeper.jp/events/example-29",
@@ -447,6 +492,7 @@ export const mockEvents: Event[] = [
     venue: "Ritz-Carlton Tokyo",
     address: "9-7-1 Akasaka, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["diversity", "women in tech", "awards"],
     image: img(9),
     url: "https://lu.ma/women-in-tech-tokyo-gala",
@@ -461,6 +507,7 @@ export const mockEvents: Event[] = [
     venue: "Fujitsu Kawasaki HQ",
     address: "4-1-1 Kamikodanaka, Nakahara-ku, Kawasaki",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["kubernetes", "cloud", "devops"],
     image: img(0),
     url: "https://www.doorkeeper.jp/events/example-31",
@@ -475,6 +522,7 @@ export const mockEvents: Event[] = [
     venue: "Tokyo Metropolitan Central Wholesale Market",
     address: "5-2-1 Toyo, Koto-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["agritech", "food tech", "sustainability"],
     image: img(1),
     url: "https://lu.ma/agritech-japan-2026",
@@ -489,6 +537,7 @@ export const mockEvents: Event[] = [
     venue: "Keio University Mita Campus",
     address: "2-15-45 Mita, Minato-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["open source", "community", "dev"],
     image: img(2),
     url: "https://www.doorkeeper.jp/events/example-33",
@@ -503,6 +552,7 @@ export const mockEvents: Event[] = [
     venue: "Mori Building Toranomon Hills",
     address: "1-23-1 Toranomon, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["proptech", "real estate", "investing"],
     image: img(3),
     url: "https://lu.ma/proptech-tokyo-breakfast",
@@ -517,6 +567,7 @@ export const mockEvents: Event[] = [
     venue: "Waseda University Big Box",
     address: "1-104 Totsukamachi, Shinjuku-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["edtech", "education", "learning"],
     image: img(4),
     url: "https://www.doorkeeper.jp/events/example-35",
@@ -531,6 +582,7 @@ export const mockEvents: Event[] = [
     venue: "Nobu Tokyo",
     address: "4-1-28 Minami-Azabu, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["founders", "growth stage", "exclusive"],
     image: img(5),
     url: "https://lu.ma/late-stage-dinner-tokyo",
@@ -545,6 +597,7 @@ export const mockEvents: Event[] = [
     venue: "teamLab Borderless",
     address: "6-2-8 Aomi, Koto-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["AR", "VR", "spatial computing"],
     image: img(6),
     url: "https://www.doorkeeper.jp/events/example-37",
@@ -559,6 +612,7 @@ export const mockEvents: Event[] = [
     venue: "500 Global Tokyo Office",
     address: "1-8-1 Azumabashi, Sumida-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["fundraising", "seed", "pitch deck"],
     image: img(7),
     url: "https://lu.ma/seed-fundraising-tokyo",
@@ -573,6 +627,7 @@ export const mockEvents: Event[] = [
     venue: "Tokyo Tech Ookayama Campus",
     address: "2-12-1 Ookayama, Meguro-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["python", "data", "dev"],
     image: img(8),
     url: "https://www.doorkeeper.jp/events/example-39",
@@ -587,6 +642,7 @@ export const mockEvents: Event[] = [
     venue: "Makuhari Messe Hall 11",
     address: "2-1 Nakase, Mihama-ku, Chiba-shi, Chiba",
     source: "luma",
+    category: "Tech",
     tags: ["mobility", "EV", "autonomous"],
     image: img(9),
     url: "https://lu.ma/mobility-tech-japan",
@@ -601,6 +657,7 @@ export const mockEvents: Event[] = [
     venue: "Palace Hotel Tokyo",
     address: "1-1-1 Marunouchi, Chiyoda-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["angel investing", "early stage", "funding"],
     image: img(0),
     url: "https://www.doorkeeper.jp/events/example-41",
@@ -615,6 +672,7 @@ export const mockEvents: Event[] = [
     venue: "Nihon Foundation Akasaka",
     address: "1-2-2 Akasaka, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["social impact", "NGO", "tech for good"],
     image: img(1),
     url: "https://lu.ma/tech-social-good-tokyo",
@@ -629,6 +687,7 @@ export const mockEvents: Event[] = [
     venue: "Shopify Tokyo Office",
     address: "1-1-2 Nishi-Shinjuku, Shinjuku-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["ecommerce", "shopify", "agencies"],
     image: img(2),
     url: "https://www.doorkeeper.jp/events/example-43",
@@ -643,6 +702,7 @@ export const mockEvents: Event[] = [
     venue: "Otemachi Financial City",
     address: "1-9-2 Otemachi, Chiyoda-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["future of work", "HR tech", "remote"],
     image: img(3),
     url: "https://lu.ma/future-work-tokyo",
@@ -657,6 +717,7 @@ export const mockEvents: Event[] = [
     venue: "KDDI DIGITAL GATE",
     address: "3-2-9 Nishi-Shinjuku, Shinjuku-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["ecosystem", "report", "networking"],
     image: img(4),
     url: "https://www.doorkeeper.jp/events/example-45",
@@ -671,6 +732,7 @@ export const mockEvents: Event[] = [
     venue: "Luma House Shibuya",
     address: "3-7-1 Shibuya, Shibuya-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["founders", "community", "weekend"],
     image: img(5),
     url: "https://lu.ma/luma-house-tokyo-sept",
@@ -685,6 +747,7 @@ export const mockEvents: Event[] = [
     venue: "NEDO Kawasaki Innovation Center",
     address: "212-1 Motomachi, Kawasaki-ku, Kawasaki",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["robotics", "automation", "AI"],
     image: img(6),
     url: "https://www.doorkeeper.jp/events/example-47",
@@ -699,6 +762,7 @@ export const mockEvents: Event[] = [
     venue: "IBM Japan Roppongi",
     address: "3-2-12 Roppongi, Minato-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["quantum", "computing", "research"],
     image: img(7),
     url: "https://lu.ma/quantum-tokyo-oct",
@@ -713,6 +777,7 @@ export const mockEvents: Event[] = [
     venue: "Genesia Ventures Office",
     address: "2-3-2 Minami-Aoyama, Minato-ku, Tokyo",
     source: "doorkeeper",
+    category: "Tech",
     tags: ["YC", "alumni", "founders"],
     image: img(8),
     url: "https://www.doorkeeper.jp/events/example-49",
@@ -727,6 +792,7 @@ export const mockEvents: Event[] = [
     venue: "Tokyo Garden Theater",
     address: "3-3 Ariake, Koto-ku, Tokyo",
     source: "luma",
+    category: "Tech",
     tags: ["competition", "global", "startup"],
     image: img(9),
     url: "https://lu.ma/gsb-japan-finals",

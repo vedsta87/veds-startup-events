@@ -1,124 +1,93 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mockEvents, Event } from "@/lib/mockEvents";
+import { mockEvents, Event, EventCategory } from "@/lib/mockEvents";
+import { classifyEvent } from "@/lib/sources.config";
+import { getEvents } from "@/lib/scraper.worker";
+import { geocodeAddress, TOKYO_CENTER } from "@/lib/geocoder";
 
-const FALLBACK_IMAGES = [
-  "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80",
-  "https://images.unsplash.com/photo-1513407030348-c983a97b98d8?w=800&q=80",
-  "https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800&q=80",
-  "https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=800&q=80",
-  "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=800&q=80",
-];
+// ── Time filter helpers ────────────────────────────────────────────────────
 
-function fallbackImage(seed: string) {
-  const i = seed.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return FALLBACK_IMAGES[i % FALLBACK_IMAGES.length];
+function toJST(date: Date): Date {
+  return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
 }
 
-async function fetchDoorkeeper(params: {
-  q: string;
-  dateFrom: string;
-  dateTo: string;
-  page: number;
-}): Promise<Event[]> {
-  const token = process.env.DOORKEEPER_API_TOKEN;
-  if (!token) return [];
-
-  const sp = new URLSearchParams({
-    prefecture: "tokyo",
-    locale: "en",
-    page: String(params.page),
-  });
-  if (params.q) sp.set("q", params.q);
-  if (params.dateFrom) sp.set("since", new Date(params.dateFrom).toISOString());
-  if (params.dateTo) sp.set("until", new Date(params.dateTo).toISOString());
-
-  const res = await fetch(`https://api.doorkeeper.jp/events?${sp}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    next: { revalidate: 300 },
-  });
-  if (!res.ok) return [];
-
-  const data: Array<{ event: Record<string, unknown> }> = await res.json();
-  return data.map(({ event: e }) => ({
-    id: `dk-${e.id}`,
-    title: String(e.title ?? ""),
-    date: String(e.starts_at ?? ""),
-    endDate: e.ends_at ? String(e.ends_at) : undefined,
-    venue: String(e.venue_name ?? "Tokyo"),
-    address: String(e.address ?? "Tokyo, Japan"),
-    source: "doorkeeper" as const,
-    tags: [],
-    image: fallbackImage(String(e.id)),
-    url: String(e.public_url ?? "https://www.doorkeeper.jp"),
-    description: String(e.description ?? "").replace(/<[^>]+>/g, "").slice(0, 200),
-    attendees: Number(e.participants ?? 0),
-  }));
+function isHappeningNow(event: Event): boolean {
+  const now = new Date();
+  const start = new Date(event.date);
+  const end = event.endDate
+    ? new Date(event.endDate)
+    : new Date(start.getTime() + 2 * 60 * 60 * 1000); // assume 2h if no endDate
+  return now >= start && now <= end;
 }
 
-async function fetchLuma(params: {
-  q: string;
-  dateFrom: string;
-}): Promise<Event[]> {
-  const sp = new URLSearchParams({
-    discover_place_api_id: "discplace-9H7asQEvWiv6DA9",
-    pagination_limit: "50",
-  });
-  if (params.q) sp.set("query", params.q);
-
-  const res = await fetch(
-    `https://api.lu.ma/discover/get-paginated-events?${sp}`,
-    { next: { revalidate: 300 } }
+function isToday(event: Event): boolean {
+  const nowJST = toJST(new Date());
+  const startJST = toJST(new Date(event.date));
+  return (
+    startJST.getFullYear() === nowJST.getFullYear() &&
+    startJST.getMonth() === nowJST.getMonth() &&
+    startJST.getDate() === nowJST.getDate()
   );
-  if (!res.ok) return [];
+}
 
-  const data: { entries?: Array<Record<string, unknown>> } = await res.json();
-  const entries = data.entries ?? [];
+function isTomorrow(event: Event): boolean {
+  const nowJST = toJST(new Date());
+  const tomorrowJST = new Date(nowJST);
+  tomorrowJST.setDate(nowJST.getDate() + 1);
+  const startJST = toJST(new Date(event.date));
+  return (
+    startJST.getFullYear() === tomorrowJST.getFullYear() &&
+    startJST.getMonth() === tomorrowJST.getMonth() &&
+    startJST.getDate() === tomorrowJST.getDate()
+  );
+}
 
-  return entries
-    .map((entry) => {
-      const e = entry.event as Record<string, unknown> | undefined;
-      if (!e) return null;
-      const geo = e.geo_address_info as Record<string, string> | undefined;
-      return {
-        id: `luma-${e.api_id}`,
-        title: String(e.name ?? ""),
-        date: String(e.start_at ?? ""),
-        endDate: e.end_at ? String(e.end_at) : undefined,
-        venue: geo?.address ?? "Tokyo",
-        address: geo?.full_address ?? geo?.city_state ?? "Tokyo, Japan",
-        source: "luma" as const,
-        tags: [],
-        image: e.cover_url ? String(e.cover_url) : fallbackImage(String(e.api_id)),
-        url: `https://lu.ma/${e.url}`,
-        description: "",
-        attendees: Number((entry as Record<string, unknown>).guest_count ?? 0),
-      } satisfies Event;
-    })
-    .filter((e): e is Event => e !== null);
+// ── Geocode events that lack coordinates ──────────────────────────────────
+
+function withCoords(event: Event): Event {
+  if (event.lat !== undefined && event.lng !== undefined) return event;
+  const coords = geocodeAddress(event.address, event.url) ??
+    geocodeAddress(event.venue, event.url) ??
+    TOKYO_CENTER;
+  return { ...event, lat: coords[0], lng: coords[1] };
+}
+
+// ── Convert scraped ProcessedEvent → Event ─────────────────────────────────
+
+// ProcessedEvent is structurally compatible with Event — only a cast needed
+function asEvent(e: Record<string, unknown>): Event {
+  return e as unknown as Event;
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q")?.toLowerCase() ?? "";
-  const source = searchParams.get("source") ?? "";
-  const dateFrom = searchParams.get("dateFrom") ?? "";
-  const dateTo = searchParams.get("dateTo") ?? "";
-  const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "20");
 
-  // Fetch from real APIs in parallel, fall back to mock if both unavailable
-  const [doorkeeperEvents, lumaEvents] = await Promise.all([
-    source === "luma" ? [] : fetchDoorkeeper({ q, dateFrom, dateTo, page }),
-    source === "doorkeeper" ? [] : fetchLuma({ q, dateFrom }),
-  ]);
+  const q           = searchParams.get("q")?.toLowerCase() ?? "";
+  const source      = searchParams.get("source") ?? "";
+  const category    = (searchParams.get("category") ?? "") as EventCategory | "";
+  const timeFilter  = searchParams.get("timeFilter") ?? ""; // now | today | tomorrow
+  const dateFrom    = searchParams.get("dateFrom") ?? "";
+  const dateTo      = searchParams.get("dateTo") ?? "";
+  const page        = parseInt(searchParams.get("page") ?? "1");
+  const limit       = parseInt(searchParams.get("limit") ?? "20");
+  const all         = searchParams.get("all") === "true"; // map view: skip pagination
 
-  const hasRealData = doorkeeperEvents.length > 0 || lumaEvents.length > 0;
-  let events: Event[] = hasRealData
-    ? [...doorkeeperEvents, ...lumaEvents]
-    : [...mockEvents];
+  // ── Database-First: try scraped cache, fall back to mock ─────────────────
+  const { events: scraped, stale } = await getEvents(
+    "tokyo",
+    category || undefined
+  );
 
-  // Client-side filter for mock fallback / Luma (which doesn't filter server-side)
-  if (q && !hasRealData) {
+  const hasScraper = scraped.length > 0;
+
+  // Build base list: scraped events take priority; mock data fills gaps
+  let events: Event[] = hasScraper
+    ? scraped.map((e) => asEvent(e as unknown as Record<string, unknown>))
+    : mockEvents.map((e) =>
+        category ? { ...e, category: category as EventCategory } : e
+      );
+
+  // ── Apply filters ─────────────────────────────────────────────────────────
+  if (q) {
     events = events.filter(
       (e) =>
         e.title.toLowerCase().includes(q) ||
@@ -126,27 +95,57 @@ export async function GET(request: NextRequest) {
         e.venue.toLowerCase().includes(q)
     );
   }
-  if (source === "doorkeeper" || source === "luma") {
+
+  if (category) {
+    events = events.filter((e) => e.category === category);
+  }
+
+  if (source) {
     events = events.filter((e) => e.source === source);
   }
+
+  if (timeFilter === "now") {
+    events = events.filter(isHappeningNow);
+  } else if (timeFilter === "today") {
+    events = events.filter(isToday);
+  } else if (timeFilter === "tomorrow") {
+    events = events.filter(isTomorrow);
+  } else {
+    // Default: only show upcoming events
+    const now = new Date();
+    events = events.filter((e) => new Date(e.date) >= now);
+  }
+
   if (dateFrom) {
     events = events.filter((e) => new Date(e.date) >= new Date(dateFrom));
   }
+
   if (dateTo) {
     events = events.filter((e) => new Date(e.date) <= new Date(dateTo));
   }
 
+  // ── Ensure every event has a category and coordinates ────────────────────
+  events = events
+    .map((e) =>
+      e.category
+        ? e
+        : { ...e, category: classifyEvent(e.title, e.tags, "Tech") as EventCategory }
+    )
+    .map(withCoords);
+
+  // ── Sort by date ascending ────────────────────────────────────────────────
   events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  // Doorkeeper is already paginated server-side; Luma + mock paginate here
-  const start = hasRealData && doorkeeperEvents.length > 0 ? 0 : (page - 1) * limit;
-  const paginated = hasRealData ? events.slice(0, limit) : events.slice(start, start + limit);
-  const hasMore = hasRealData ? doorkeeperEvents.length === 25 : start + limit < events.length;
+  // ── Paginate (skip when map view requests all) ────────────────────────────
+  const total = events.length;
 
-  return NextResponse.json({
-    events: paginated,
-    hasMore,
-    total: events.length,
-    page,
-  });
+  if (all) {
+    return NextResponse.json({ events, total, stale });
+  }
+
+  const start    = (page - 1) * limit;
+  const paginated = events.slice(start, start + limit);
+  const hasMore  = start + limit < total;
+
+  return NextResponse.json({ events: paginated, hasMore, total, page, stale });
 }
